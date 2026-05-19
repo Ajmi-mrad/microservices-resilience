@@ -5,4 +5,5 @@ target/
 *.ear
 .idea/
 *.iml
-.DS_StoreRESUME.md
+.DS_Store
+RESUME.md
