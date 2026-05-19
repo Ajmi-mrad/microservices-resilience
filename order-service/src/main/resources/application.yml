@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: order-service
+
+# URLs of the downstream services
+services:
+  inventory:
+    url: http://localhost:8081
+  payment:
+    url: http://localhost:8082
+
+# RestTemplate timeouts (kept short to fail fast and trigger the Circuit Breaker)
+# Configured directly in code if needed; here we trust the Resilience4j wrapper.
+
+# ============================================================
+# Resilience4j configuration
+# ============================================================
+resilience4j:
+  # ----- Circuit Breaker -----
+  circuitbreaker:
+    instances:
+      inventoryService:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10              # Analysis window: 10 calls
+        minimum-number-of-calls: 5           # Minimum calls before evaluation
+        failure-rate-threshold: 50           # Failure threshold: 50%
+        wait-duration-in-open-state: 300s    # Time before HALF_OPEN attempt
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: false
+
+  # ----- Bulkhead (semaphore) -----
+  bulkhead:
+    instances:
+      paymentService:
+        max-concurrent-calls: 2              # Max 2 parallel calls
+        max-wait-duration: 0                 # 0 = immediate rejection if full
+
+# ============================================================
+# Actuator: expose Resilience4j metrics
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, circuitbreakers, bulkheads, metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
